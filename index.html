@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<style>
+    body {
+        display: flex;
+        justify-content: center;
+        flex-direction: column;
+        background-color: rgb(230, 230, 230);
+        font-family: Roboto, sans-serif;
+        text-align: center;
+    }
+
+    h1 {
+        font-size: 25px;
+        margin: 20px
+    }
+
+    img {
+        width: 100px;
+        margin: auto;
+    }
+
+    input {
+        display: flex;
+        flex-direction: column;
+    }
+
+    input[type="file" i] {
+        color: green;
+        text-align: center;
+        border-color: red;
+        display: flex;
+        flex-direction: column;
+        margin: auto;
+        opacity: 0;
+        width: 100%;
+        height: 60px;
+        position: relative;
+        top: 0;
+        z-index: 10;
+        cursor: pointer;
+    }
+
+    button {
+        color: whitesmoke;
+        background-color: rgb(85, 75, 206);
+        padding: 15px;
+        border-radius: 15px;
+        font-size: 17px;
+        box-shadow: 2px 5px 15px 1px rgba(0, 0, 0, 0.6);
+        cursor: pointer;
+        width: 250px;
+        margin: auto;
+        margin-top: 35px;
+    }
+
+    .file-select {
+        position: relative;
+        display: inline-block;
+    }
+
+    .file-select::before {
+        box-shadow: 2px 5px 15px 1px rgba(0, 0, 0, 0.6);
+        background-color: #5678EF;
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 3px;
+        content: 'Seleccionar Archivo';
+        border-radius: 15px;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        height: 60px;
+    }
+
+    #src-file1::before {
+        content: 'Seleccionar Archivo';
+        font-size: 15px;
+        height: 60px;
+    }
+
+    h6 {
+        font-size: 20px;
+        margin: 20px;
+    }
+
+    a:hover {
+        color: black;
+    }
+
+    a {
+        color: #5678EF;
+
+    }
+</style>
+
+<head>
+    <title>Procesamiento de Archivo</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script>
+        function procesarArchivo() {
+            var fileInput = document.getElementById('fileInput');
+            var file = fileInput.files[0];
+            var reader = new FileReader();
+
+            reader.onload = function (e) {
+                var contents = e.target.result;
+                var lines = contents.split('\n');
+                var output = [];
+
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i];
+                    var columns = line.split(';');
+                    var frequency = parseFloat(columns[0]) / 1000000; // Conversión de Hz a MHz
+                    var roundedFrequency = Math.floor(frequency); // Eliminar los decimales
+                    var cleanedFrequency = roundedFrequency.toString().replace(',', '.'); // Reemplazar las comas decimales por puntos
+                    var cleanedLine = cleanedFrequency;
+
+                    for (var j = 1; j < columns.length; j++) {
+                        var value = columns[j].replace(',', '.');
+                        cleanedLine += ',' + value;
+                    }
+
+                    output.push(cleanedLine);
+                }
+
+                var csvContent = "data:text/csv;charset=utf-8,"
+                csvContent += output.join("\n");
+
+                var encodedUri = encodeURI(csvContent);
+                var link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "ArchivoTinyWorkbench.csv");
+                document.body.appendChild(link); // Agregar el enlace al documento HTML
+                link.click(); // Simular el clic en el enlace para iniciar la descarga
+            };
+
+            reader.readAsText(file);
+        }
+    </script>
+</head>
+
+<body>
+    <img src="https://leonsonidovirtual.com/wp-content/uploads/2022/12/logoimpresionredondobaja.png" alt="Logo LSV">
+    <h1>Cargar archivo .csv de TinySA para Workbench</h1>
+    <div class="file-select" id="src-file1">
+        <input type="file" id="fileInput">
+    </div>
+    <button onclick="procesarArchivo()">Convertir TinySA a Workbench</button>
+
+    <h1>Visualizar el espectro RF de tu archivo</h1>
+    <div class="file-select">
+        <input type="file" id="csvFile" accept=".csv" />
+    </div>
+    <div>
+        <a href="https://www.leonsonidovirtual.org/" target="_blank" rel="noopener noreferrer">
+            <h6>Creador: www.leonsonidovirtual.org</h6>
+        </a>
+    </div>
+    <div id="chart"></div>
+    <script src="script.js"></script>
+</body>
+
+</html>
