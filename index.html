@@ -96,51 +96,66 @@
         color: #5678EF;
 
     }
+
+    h5 {
+        color: red;
+        font-size: 15px;
+        font-weight: 400;
+    }
 </style>
 
 <head>
-    <title>Procesamiento de Archivo</title>
+    <title>Cargar y convertir archivos TinySA</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script>
-        function procesarArchivo() {
-            var fileInput = document.getElementById('fileInput');
-            var file = fileInput.files[0];
-            var reader = new FileReader();
-
-            reader.onload = function (e) {
-                var contents = e.target.result;
-                var lines = contents.split('\n');
-                var output = [];
-
-                for (var i = 0; i < lines.length; i++) {
-                    var line = lines[i];
-                    var columns = line.split(';');
-                    var frequency = parseFloat(columns[0]) / 1000000; // Conversión de Hz a MHz
-                    var roundedFrequency = Math.floor(frequency); // Eliminar los decimales
-                    var cleanedFrequency = roundedFrequency.toString().replace(',', '.'); // Reemplazar las comas decimales por puntos
-                    var cleanedLine = cleanedFrequency;
-
-                    for (var j = 1; j < columns.length; j++) {
-                        var value = columns[j].replace(',', '.');
-                        cleanedLine += ',' + value;
+        $(document).ready(function () {
+            $('#fileInput').on('change', function (e) {
+                var file = e.target.files[0];
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    var contents = e.target.result;
+                    var rows = contents.split('\n');
+                    var newRows = [];
+                    for (var i = 0; i < rows.length; i++) {
+                        var row = rows[i].split(',');
+                        // Eliminar ocurrencias de "000;"
+                        for (var j = 0; j < row.length; j++) {
+                            row[j] = row[j].replace(/000;/g, '');
+                        }
+                        // Unir columna dos y tres
+                        if (row.length >= 3) {
+                            row[1] = row[1] + ',' + row[2]; // Unir con una coma
+                            row.splice(2, 1);
+                        }
+                        // Cambiar comas por puntos y viceversa
+                        for (var j = 0; j < row.length; j++) {
+                            if (row[j].indexOf('.') !== -1) {
+                                row[j] = row[j].replace('.', '|'); // Temporalmente cambiar punto por un carácter especial
+                                row[j] = row[j].replace(/,/g, '.'); // Cambiar comas por puntos
+                                row[j] = row[j].replace('|', ','); // Cambiar el carácter especial por comas
+                            } else {
+                                row[j] = row[j].replace(',', '.'); // Cambiar puntos por comas
+                            }
+                        }
+                        // Convertir columna uno de hertz a megahertz
+                        if (!isNaN(parseFloat(row[0]))) {
+                            row[0] = parseFloat(row[0]) / 1000000;
+                        }
+                        newRows.push(row.join(','));
                     }
-
-                    output.push(cleanedLine);
-                }
-
-                var csvContent = "data:text/csv;charset=utf-8,"
-                csvContent += output.join("\n");
-
-                var encodedUri = encodeURI(csvContent);
-                var link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "ArchivoTinyWorkbench.csv");
-                document.body.appendChild(link); // Agregar el enlace al documento HTML
-                link.click(); // Simular el clic en el enlace para iniciar la descarga
-            };
-
-            reader.readAsText(file);
-        }
+                    var csvContent = newRows.join('\n');
+                    // Descargar archivo CSV
+                    var downloadLink = document.createElement('a');
+                    downloadLink.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+                    downloadLink.download = 'ArchivoTinyWorkbench.csv';
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                };
+                reader.readAsText(file);
+            });
+        });
     </script>
 </head>
 
@@ -150,8 +165,9 @@
     <div class="file-select" id="src-file1">
         <input type="file" id="fileInput">
     </div>
-    <button onclick="procesarArchivo()">Convertir TinySA a Workbench</button>
+    <h5>El archivo se descarga automaticamente en tu carpeta de descargas.</h5>
 
+    <!-- <button onclick="procesarArchivo()">Convertir TinySA a Workbench</button> -->
     <h1>Visualizar el espectro RF de tu archivo</h1>
     <div class="file-select">
         <input type="file" id="csvFile" accept=".csv" />
