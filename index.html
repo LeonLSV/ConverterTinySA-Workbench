@@ -1,164 +1,187 @@
 <!DOCTYPE html>
 <html>
-<style>
-    body {
-        display: flex;
-        justify-content: center;
-        flex-direction: column;
-        background-color: rgb(230, 230, 230);
-        font-family: Roboto, sans-serif;
-        text-align: center;
+<script>
+    document.getElementById('csvFile').addEventListener('change', handleFile, false);
+
+    function handleFile(e) {
+        var file = e.target.files[0];
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var contents = e.target.result;
+            processData(contents);
+        };
+        reader.readAsText(file);
     }
 
-    h1 {
-        font-size: 25px;
-        margin: 20px
+    function processData(csv) {
+        var lines = csv.split('\n');
+        var data = [];
+        for (var i = 0; i < lines.length; i++) {
+            var values = lines[i].split(',');
+            var x = parseFloat(values[0]);
+            var y = parseFloat(values[1]);
+            data.push({ x: x, y: y });
+        }
+        drawChart(data);
     }
 
-    img {
-        width: 100px;
-        margin: auto;
+    function drawChart(data) {
+        var xData = data.map(function (d) {
+            return d.x;
+        });
+        var yData = data.map(function (d) {
+            return d.y;
+        });
+
+        var trace = {
+            x: xData,
+            y: yData,
+            mode: 'lines',
+            type: 'scatter'
+        };
+
+        var layout = {
+            title: 'Espectro de RF',
+            xaxis: {
+                title: 'Frecuencia'
+            },
+            yaxis: {
+                title: 'dBm'
+            },
+            zoom: {
+                enabled: true
+            }
+        };
+
+        var plotData = [trace];
+        Plotly.newPlot('chart', plotData, layout);
     }
 
-    input {
-        display: flex;
-        flex-direction: column;
+
+
+
+
+
+
+    $(document).ready(function () {
+        $('#fileInput').on('change', function (e) {
+            var file = e.target.files[0];
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var contents = e.target.result;
+                var rows = contents.split('\n');
+                var newRows = [];
+                for (var i = 0; i < rows.length; i++) {
+                    var row = rows[i].split(',');
+                    // Eliminar ocurrencias de "000;"
+                    for (var j = 0; j < row.length; j++) {
+                        row[j] = row[j].replace(/000;/g, '');
+                    }
+                    // Unir columna dos y tres
+                    if (row.length >= 3) {
+                        row[1] = row[1] + ',' + row[2]; // Unir con una coma
+                        row.splice(2, 1);
+                    }
+                    // Cambiar comas por puntos y viceversa
+                    for (var j = 0; j < row.length; j++) {
+                        if (row[j].indexOf('.') !== -1) {
+                            row[j] = row[j].replace('.', '|'); // Temporalmente cambiar punto por un carácter especial
+                            row[j] = row[j].replace(/,/g, '.'); // Cambiar comas por puntos
+                            row[j] = row[j].replace('|', ','); // Cambiar el carácter especial por comas
+                        } else {
+                            row[j] = row[j].replace(',', '.'); // Cambiar puntos por comas
+                        }
+                    }
+                    // Convertir columna uno de hertz a megahertz
+                    if (!isNaN(parseFloat(row[0]))) {
+                        row[0] = parseFloat(row[0]) / 1000000;
+                    }
+                    newRows.push(row.join(','));
+                }
+                var csvContent = newRows.join('\n');
+                // Descargar archivo CSV
+                var downloadLink = document.createElement('a');
+                downloadLink.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+                downloadLink.download = 'LeonSonidoVirtualExport.csv';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            };
+            reader.readAsText(file);
+        });
+    });
+
+
+
+
+
+
+
+
+
+    document.getElementById('csvFileInput').addEventListener('change', function (event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const text = e.target.result;
+                processCSV(text);
+            };
+            reader.readAsText(file);
+        }
+    });
+
+
+    function processCSV(csvText) {
+        // Actualizar para usar comas como delimitador
+        const originalDelimiter = ';';
+        const newDelimiter = ',';
+        const lines = csvText.split('\n');
+        const formattedLines = lines.map(line => {
+            const columns = line.split(originalDelimiter);
+            if (columns.length > 1) {
+                // Convertir valor a MHz con punto después de los primeros 3 dígitos y limitar a 4 decimales
+                columns[0] = convertToMHz(columns[0]);
+            }
+            return columns.join(newDelimiter); // Usar la nueva coma como delimitador
+        });
+        // Preparar datos para exportar con el nuevo delimitador
+        window.formattedCSV = formattedLines.join('\n');
     }
 
-    input[type="file" i] {
-        color: green;
-        text-align: center;
-        border-color: red;
-        display: flex;
-        flex-direction: column;
-        margin: auto;
-        opacity: 0;
-        width: 100%;
-        height: 60px;
-        position: relative;
-        top: 0;
-        z-index: 10;
-        cursor: pointer;
+    function convertToMHz(numberString) {
+        const cleanedNumberString = numberString.replace('.', '').trim();
+        if (cleanedNumberString.length > 3) {
+            let result = cleanedNumberString.substring(0, 3) + '.' + cleanedNumberString.substring(3);
+            const parts = result.split('.');
+            if (parts.length > 1 && parts[1].length > 4) {
+                result = parts[0] + '.' + parts[1].substring(0, 4);
+            }
+            return result;
+        }
+        return cleanedNumberString;
     }
 
-    button {
-        color: whitesmoke;
-        background-color: rgb(85, 75, 206);
-        padding: 15px;
-        border-radius: 15px;
-        font-size: 17px;
-        box-shadow: 2px 5px 15px 1px rgba(0, 0, 0, 0.6);
-        cursor: pointer;
-        width: 250px;
-        margin: auto;
-        margin-top: 35px;
+
+
+    function exportCSV() {
+        const blob = new Blob([window.formattedCSV], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'LeonSonidoVirtualExport.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
-    .file-select {
-        position: relative;
-        display: inline-block;
-    }
-
-    .file-select::before {
-        box-shadow: 2px 5px 15px 1px rgba(0, 0, 0, 0.6);
-        background-color: #5678EF;
-        color: white;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border-radius: 3px;
-        content: 'Seleccionar Archivo';
-        border-radius: 15px;
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        height: 60px;
-    }
-
-    #src-file1::before {
-        content: 'Seleccionar Archivo';
-        font-size: 15px;
-        height: 60px;
-    }
-
-    h6 {
-        font-size: 20px;
-        margin: 20px;
-    }
-
-    a:hover {
-        color: black;
-    }
-
-    a {
-        color: #5678EF;
-
-    }
-
-    h5 {
-        color: red;
-        font-size: 15px;
-        font-weight: 400;
-    }
-</style>
+</script>
 
 <head>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3294613674470375"
-     crossorigin="anonymous"></script>
     <title>Cargar y convertir archivos TinySA</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#fileInput').on('change', function (e) {
-                var file = e.target.files[0];
-                var reader = new FileReader();
-                reader.onload = function (e) {
-                    var contents = e.target.result;
-                    var rows = contents.split('\n');
-                    var newRows = [];
-                    for (var i = 0; i < rows.length; i++) {
-                        var row = rows[i].split(',');
-                        // Eliminar ocurrencias de "000;"
-                        for (var j = 0; j < row.length; j++) {
-                            row[j] = row[j].replace(/000;/g, '');
-                        }
-                        // Unir columna dos y tres
-                        if (row.length >= 3) {
-                            row[1] = row[1] + ',' + row[2]; // Unir con una coma
-                            row.splice(2, 1);
-                        }
-                        // Cambiar comas por puntos y viceversa
-                        for (var j = 0; j < row.length; j++) {
-                            if (row[j].indexOf('.') !== -1) {
-                                row[j] = row[j].replace('.', '|'); // Temporalmente cambiar punto por un carácter especial
-                                row[j] = row[j].replace(/,/g, '.'); // Cambiar comas por puntos
-                                row[j] = row[j].replace('|', ','); // Cambiar el carácter especial por comas
-                            } else {
-                                row[j] = row[j].replace(',', '.'); // Cambiar puntos por comas
-                            }
-                        }
-                        // Convertir columna uno de hertz a megahertz
-                        if (!isNaN(parseFloat(row[0]))) {
-                            row[0] = parseFloat(row[0]) / 1000000;
-                        }
-                        newRows.push(row.join(','));
-                    }
-                    var csvContent = newRows.join('\n');
-                    // Descargar archivo CSV
-                    var downloadLink = document.createElement('a');
-                    downloadLink.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
-                    downloadLink.download = 'ArchivoTinyWorkbench.csv';
-                    document.body.appendChild(downloadLink);
-                    downloadLink.click();
-                    document.body.removeChild(downloadLink);
-                };
-                reader.readAsText(file);
-            });
-        });
-    </script>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -173,6 +196,16 @@
     <h1>Visualizar el espectro RF de tu archivo</h1>
     <div class="file-select">
         <input type="file" id="csvFile" accept=".csv" />
+    </div>
+    <div id="app">
+        <h5>Si no te funciona con la primera opción, entonces probá con ésta.<br>
+            Primero debes cargar el archivo, luego darle al botón de "Formatear CSV" y luego al botón "Exportar CSV"
+        </h5>
+        <div class="file-select">
+            <input type="file" id="csvFileInput" accept=".csv">
+        </div>
+        <button onclick="loadAndFormatCSV()">2-Click para formatear CSV</button>
+        <button onclick="exportCSV()">3-Click para exportar CSV</button>
     </div>
     <div>
         <a href="https://www.leonsonidovirtual.org/" target="_blank" rel="noopener noreferrer">
